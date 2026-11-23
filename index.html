@@ -102,7 +102,71 @@ $('#hostBox').innerHTML=host?`<button id="startBtn" class="btn primary wide" ${c
 if(host)$('#startBtn').onclick=startGame;
 $('#roleNote').textContent=host?'Вы капитан этой комнаты.':'Ожидайте запуска капитаном.';
 }
-function renderStarted(){lobbyBuilt=false;$('#app').innerHTML=`<section class="panel hero"><h1 class="heading">ЭКИПАЖ СОБРАН</h1><p>Капитан запустил рейс. Комната перешла в состояние «Игра началась».</p><p class="note">Игровой движок будет подключён следующим этапом.</p></section>`}
+let G=null,V=null,gch=null,hello=null;
+const sh=a=>[...a].sort(()=>Math.random()-.5),alive=()=>G.players.filter(p=>p.alive);
+function gsend(p){gch&&gch.send({type:'broadcast',event:'m',payload:p})}
+function renderStarted(){lobbyBuilt=false;if(!gch)initGame();renderGame()}
+function initGame(){
+const host=!!me.is_host;
+gch=db.channel('game-'+room.id,{config:{broadcast:{self:false}}});
+gch.on('broadcast',{event:'m'},({payload})=>onMsg(payload)).subscribe(st=>{if(st==='SUBSCRIBED'){if(host)hostStart();else gsend({t:'hello',from:me.player_id})}});
+if(!host)hello=setInterval(()=>{if(!V)gsend({t:'hello',from:me.player_id})},3000);
+}
+function onMsg(m){if(m.t==='views'){V=m.views[me.player_id]||null;renderGame()}else if(me.is_host)handle(m)}
+function act(m){if(me.is_host)handle(m);else gsend(m)}
+function hostStart(){
+const sv=localStorage.getItem('kv_G_'+room.id);
+if(sv)G=JSON.parse(sv);else{
+const ps=room.players.map(p=>({id:p.player_id,name:p.player_name,alive:true,role:'p'}));
+const c=ps.length>=20?3:ps.length>=11?2:1;sh(ps).slice(0,c).forEach(p=>p.role='c');
+G={phase:'night',day:1,target:room.target_days,players:ps,votes:{},night:{},log:['Рейс начался. Ночь 1: Людоеды выбирают жертву.'],winner:null};}
+push();
+}
+function viewFor(pid){const m=G.players.find(p=>p.id===pid),end=!!G.winner,day=G.phase==='day';
+return{phase:G.phase,day:G.day,target:G.target,log:G.log.slice(-8),winner:G.winner,me:m?{role:m.role,alive:m.alive}:null,
+mates:m&&m.role==='c'?G.players.filter(p=>p.role==='c'&&p.id!==pid).map(p=>p.name):[],
+players:G.players.map(p=>({id:p.id,name:p.name,alive:p.alive,role:(end||!p.alive)?p.role:null})),
+my:(day?G.votes[pid]:G.night[pid])||null,done:Object.keys(day?G.votes:G.night).length,
+need:day?alive().length:alive().filter(p=>p.role==='c').length}}
+function push(){localStorage.setItem('kv_G_'+room.id,JSON.stringify(G));const views={};G.players.forEach(p=>views[p.id]=viewFor(p.id));gsend({t:'views',views});V=views[me.player_id]||null;renderGame()}
+function nm(id){return G.players.find(p=>p.id===id).name}
+function handle(m){
+if(m.t==='hello')return push();
+if(G.winner)return;
+const f=G.players.find(p=>p.id===m.from);if(!f||!f.alive)return;
+if(m.t==='vote'&&G.phase==='day'){if(m.to!=='skip'&&!(G.players.find(p=>p.id===m.to)||{}).alive)return;G.votes[m.from]=m.to;if(alive().every(p=>G.votes[p.id]))return endPhase()}
+if(m.t==='night'&&G.phase==='night'&&f.role==='c'){const t=G.players.find(p=>p.id===m.to);if(!t||!t.alive||t.role==='c')return;G.night[m.from]=m.to;if(alive().filter(p=>p.role==='c').every(p=>G.night[p.id]))return endPhase()}
+if(m.t==='force'&&m.from===me.player_id)return endPhase();
+push();
+}
+function leader(o){const c={};Object.values(o).forEach(v=>{if(v!=='skip')c[v]=(c[v]||0)+1});const mx=Math.max(0,...Object.values(c)),w=Object.keys(c).filter(k=>c[k]===mx);return mx?{id:w[Math.floor(Math.random()*w.length)],tie:w.length>1}:null}
+function endPhase(){
+if(G.phase==='night'){const t=leader(G.night);if(t){const p=G.players.find(x=>x.id===t.id);p.alive=false;G.log.push(`Утро ${G.day}: ночью пропал ${p.name}. Он был Пассажиром.`)}else G.log.push(`Утро ${G.day}: ночь прошла тихо, никто не пропал.`);G.night={};G.phase='day'}
+else{const t=leader(G.votes);if(t&&!t.tie){const p=G.players.find(x=>x.id===t.id);p.alive=false;G.log.push(`Суд ${G.day}: изгнан ${p.name}. Он был ${p.role==='c'?'ЛЮДОЕДОМ':'Пассажиром'}.`)}else G.log.push(`Суд ${G.day}: голоса разделились или все воздержались, никого не изгнали.`);G.votes={};G.day++;G.phase='night';if(!G.winner&&G.day<=G.target)G.log.push(`Ночь ${G.day}: Людоеды выбирают жертву.`)}
+const c=alive().filter(p=>p.role==='c').length,h=alive().length-c;
+if(c===0){G.winner='p';G.log.push('Все Людоеды изгнаны. Пассажиры победили!')}
+else if(c>=h){G.winner='c';G.log.push('Людоедов стало не меньше, чем пассажиров. Победа Людоедов!')}
+else if(G.day>G.target){G.winner='p';G.log.push('Ковчег достиг планеты! Пассажиры победили!')}
+push();
+}
+function renderGame(){
+if(!V){$('#app').innerHTML='<section class="panel hero"><h1 class="heading">РЕЙС НАЧАЛСЯ</h1><p class="note">Подключаемся к игре… Если висит больше 10 секунд, капитан должен держать страницу открытой.</p></section>';return}
+const v=V,isC=v.me&&v.me.role==='c',aliveMe=v.me&&v.me.alive,day=v.phase==='day',host=me.is_host;
+const title=v.winner?(v.winner==='p'?'ПОБЕДА ПАССАЖИРОВ':'ПОБЕДА ЛЮДОЕДОВ'):(day?`ДЕНЬ ${v.day} · СУД`:`НОЧЬ ${v.day}`);
+const canAct=!v.winner&&aliveMe&&(day||isC);
+const btns=p=>{if(!canAct||!p.alive||p.id===me.player_id)return '';if(!day&&p.role==='c')return '';return `<button class="btn ${v.my===p.id?'primary':'paperbtn'}" data-id="${p.id}">${day?(v.my===p.id?'ВАШ ГОЛОС':'ГОЛОСОВАТЬ'):(v.my===p.id?'ЖЕРТВА ВЫБРАНА':'ВЫБРАТЬ ЖЕРТВУ')}</button>`};
+const mates=v.mates.length?` · союзники: ${v.mates.map(esc).join(', ')}`:'';
+$('#app').innerHTML=`<section class="panel"><div class="eyebrow">РЕЙС · ДОЛЕТЕТЬ НУЖНО ДО ДНЯ ${v.target}</div><h1 class="heading">${title}</h1>
+<div class="player"><strong>Ваша роль: ${isC?'ЛЮДОЕД 🍖':'ПАССАЖИР'}${aliveMe?'':' (вы выбыли)'}</strong><div class="note">${isC?'Ночью выбирайте жертву, днём притворяйтесь пассажиром'+esc(mates):'Днём ищите Людоедов и голосуйте за изгнание'}</div></div>
+${!v.winner?`<p class="note">${day?'Обсудите вслух, затем голосуйте':'Ночь: Людоеды выбирают жертву, остальные ждут'}. Выбрали: ${v.done} из ${v.need}</p>`:''}
+<div class="players">${v.players.map(p=>`<div class="player" style="${p.alive?'':'opacity:.55'}"><strong>${esc(p.name)}${p.id===me.player_id?' (вы)':''}</strong><div class="note">${p.alive?'на борту':'выбыл'}${p.role?' · '+(p.role==='c'?'Людоед':'Пассажир'):''}</div>${btns(p)}</div>`).join('')}</div>
+${canAct&&day?`<button class="btn paperbtn wide" id="skipVote">${v.my==='skip'?'ВЫ ВОЗДЕРЖАЛИСЬ':'ВОЗДЕРЖАТЬСЯ'}</button>`:''}
+<div class="section-title">ХРОНИКА</div>${v.log.map(l=>`<p class="note">${esc(l)}</p>`).join('')}
+${host&&!v.winner?'<button class="btn paperbtn wide" id="forceBtn">ЗАВЕРШИТЬ ФАЗУ ДОСРОЧНО</button>':''}</section>`;
+document.querySelectorAll('#app .player [data-id]').forEach(b=>b.onclick=()=>act({t:day?'vote':'night',from:me.player_id,to:b.dataset.id}));
+const sk=$('#skipVote');if(sk)sk.onclick=()=>act({t:'vote',from:me.player_id,to:'skip'});
+const fb=$('#forceBtn');if(fb)fb.onclick=()=>act({t:'force',from:me.player_id});
+}
 async function createRoom(){
 if(busy)return;
 if(!db)return showError('Сайт не подключён к Supabase.');
