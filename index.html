@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ковчег: Последний рейс</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=PT+Sans+Narrow:wght@400;700&family=Russo+One&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--ink:#171210;--paper:#f2e5c6;--card:#fbf3e2;--teal:#347078;--orange:#d45522;--olive:#5d6b3b;--muted:#746b5d}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at top,#35291f,#120e0c);font-family:'PT Sans Narrow',sans-serif;color:var(--ink);padding:18px}
+button,input,select{font:inherit}button{cursor:pointer}.wrap{max-width:1180px;margin:auto;background:var(--paper);border:4px solid var(--ink);border-radius:18px;padding:20px;box-shadow:8px 8px 0 #0008;background-image:radial-gradient(#d7c8a5 1px,transparent 1px);background-size:8px 8px}
+header{display:flex;justify-content:space-between;align-items:center;gap:15px;border-bottom:3px dashed var(--ink);padding-bottom:14px;margin-bottom:18px}.logo{font:clamp(24px,4vw,38px) 'Russo One';color:#c85a26;text-shadow:2px 2px 0 var(--ink);letter-spacing:.3px}.sub{font-weight:bold;color:#514538}.stamp{background:#b74629;color:white;padding:9px 13px;border:2px solid var(--ink);border-radius:6px;font:14px 'Russo One';transform:rotate(1deg)}
+.panel{background:var(--card);border:3px solid var(--ink);border-radius:12px;padding:20px;box-shadow:4px 4px 0 var(--ink)}.hero{max-width:760px;margin:30px auto}.eyebrow{font:13px 'Russo One';color:var(--teal);letter-spacing:1px}.heading{font:clamp(22px,3vw,30px) 'Russo One';margin:7px 0 16px}.field{margin:12px 0}.field label{display:block;font-weight:bold;margin-bottom:5px}.field input,.field select{width:100%;padding:12px;border:2.5px solid var(--ink);border-radius:7px;background:#fffaf0;font-weight:bold;font-size:17px}.field .choice-select{cursor:pointer}.field .custom-number{margin-top:8px}.field .custom-number:not(.hidden){display:block}.field .choice-select{appearance:auto;cursor:pointer}.field .custom-number{margin-top:8px}.field .custom-number:not(.hidden){display:block}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.btn{border:3px solid var(--ink);border-radius:9px;padding:13px 18px;font:16px 'Russo One';box-shadow:3px 3px 0 var(--ink);transition:.12s}.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}.primary{background:var(--teal);color:white}.olive{background:var(--olive);color:white}.paperbtn{background:#fff7e7}.wide{width:100%;margin-top:10px}.note{color:var(--muted);font-size:14px;line-height:1.35}.hidden{display:none!important}.error{background:transparent;border:0;color:var(--muted);padding:4px 0;font-weight:bold;margin:8px 0}.success{background:#d9ead8;border:2px solid #416c43;padding:10px;border-radius:7px;margin:12px 0}.lobby-head{display:flex;justify-content:space-between;gap:15px;align-items:center;flex-wrap:wrap}.room-code{font:clamp(32px,7vw,54px) 'Russo One';letter-spacing:7px;color:var(--orange);background:#fff8e8;border:3px dashed var(--ink);border-radius:10px;padding:10px 18px;text-align:center}.invite{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.invite input{flex:1;min-width:180px;padding:10px;border:2px solid var(--ink);border-radius:7px;background:white;font-weight:bold}.players{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin:15px 0}.player{background:#fff8e8;border:2px solid var(--ink);border-radius:9px;padding:12px;min-height:88px;box-shadow:2px 2px 0 #000}.player strong{display:block;font:16px 'Russo One';margin-bottom:5px;overflow-wrap:anywhere}.ready{color:#3d6a36;font-weight:bold}.waiting{color:#a45a20;font-weight:bold}.count{font:24px 'Russo One';color:var(--teal)}.section-title{font:18px 'Russo One';margin:20px 0 8px}.footerline{border-top:2px dashed #8b7c61;margin-top:18px;padding-top:12px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+@media(max-width:650px){body{padding:7px}.wrap{padding:12px}.two{grid-template-columns:1fr}header{align-items:flex-start;flex-direction:column}.panel{padding:14px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><div><div class="logo">КОВЧЕГ: ПОСЛЕДНИЙ РЕЙС</div><div class="sub">Интерактивный триллер-сериал на выживание и дедукцию · 6–30 человек</div></div><div class="stamp">РЕЙС № 07 · НАБОР ЭКИПАЖА</div></header>
+<main id="app"></main>
+</div>
+<script>
+/* ВСТАВЬТЕ URL И ANON KEY ПРОЕКТА SUPABASE ПОСЛЕ ЕГО СОЗДАНИЯ */
+const SUPABASE_URL = 'https://zodhknjnnasrxpafosfu.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_vgqlkgvfIOJKDvOKiqEi8Q_rGPmJ1jH';
+const configured = SUPABASE_URL.startsWith('https://') && !SUPABASE_URL.includes('ВСТАВЬТЕ') && SUPABASE_ANON_KEY.length>30 && !SUPABASE_ANON_KEY.includes('ВСТАВЬТЕ');
+const db = configured ? window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY) : null;
+const $ = s => document.querySelector(s);
+let room=null, me=null, channel=null, poller=null;
+const params=new URLSearchParams(location.search), incoming=(params.get('room')||'').toUpperCase();
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uuid=()=>(crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=crypto.getRandomValues(new Uint8Array(1))[0]%16;return (c==='x'?r:(r&3|8)).toString(16)}));
+const code=()=>Array.from(crypto.getRandomValues(new Uint8Array(5)),x=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[x%32]).join('');
+function showError(msg){const e=$('#error');if(e){e.textContent=msg;e.classList.remove('hidden')}}
+function home(){ $('#app').innerHTML=`
+<section class="panel hero">
+<div class="eyebrow">ПОДГОТОВКА К МЕЖПЛАНЕТНОМУ ПЕРЕЛЁТУ</div>
+<h1 class="heading">СОЗДАТЬ КОМНАТУ ОЖИДАНИЯ</h1>
+<p class="note">Создайте свой Ковчег, пригласите друзей и дождитесь, пока весь экипаж будет готов. Персонажи создаются уже внутри комнаты.</p>
+<div id="error" class="error hidden"></div>
+<div class="field"><label>Ваше имя · капитан</label><input id="hostName" maxlength="24" placeholder="Например, Капитан Громов"></div>
+<div class="field"><label>Название Ковчега</label><input id="arkTitle" maxlength="32" value="Ковчег «Надежда-7»"></div>
+<div class="two">
+<div class="field"><label>Количество игроков · от 6 до 30</label>
+<select id="maxPlayersSelect" class="choice-select">${Array.from({length:25},(_,i)=>`<option value="${i+6}" ${i+6===12?'selected':''}>${i+6} игроков</option>`).join('')}<option value="custom">Своё значение…</option></select>
+<input id="maxPlayersCustom" class="custom-number hidden" type="number" min="6" max="30" step="1" placeholder="Введите от 6 до 30"></div>
+<div class="field"><label>Дней до планеты · от 4 до 10</label>
+<select id="targetDaysSelect" class="choice-select">${Array.from({length:7},(_,i)=>`<option value="${i+4}" ${i+4===6?'selected':''}>${i+4} дней</option>`).join('')}<option value="custom">Своё значение…</option></select>
+<input id="targetDaysCustom" class="custom-number hidden" type="number" min="4" max="10" step="1" placeholder="Введите от 4 до 10"></div>
+</div>
+<button class="btn primary wide" id="createBtn">СОЗДАТЬ КОМНАТУ ►</button>
+<p class="note">После создания появятся код и ссылка-приглашение. Персонажи создаются внутри комнаты ожидания.</p>
+</section>`;$('#maxPlayersSelect').onchange=e=>$('#maxPlayersCustom').classList.toggle('hidden',e.target.value!=='custom');
+$('#targetDaysSelect').onchange=e=>$('#targetDaysCustom').classList.toggle('hidden',e.target.value!=='custom');
+$('#createBtn').onclick=createRoom}
+function joinScreen(){ $('#app').innerHTML=`
+<section class="panel hero"><div class="eyebrow">ДОБРО ПОЖАЛОВАТЬ НА БОРТ</div><h1 class="heading">ВХОД В КОМНАТУ</h1><div id="error" class="error hidden"></div>
+<div class="field"><label>Код комнаты</label><input id="roomCodeInput" maxlength="5" value="${esc(incoming)}" style="text-transform:uppercase" placeholder="ABCDE"></div>
+<div class="field"><label>Ваше имя</label><input id="guestName" maxlength="24" placeholder="Как вас зовут?"></div>
+<button id="joinBtn" class="btn olive wide">ВОЙТИ В КОМНАТУ ►</button>
+<p class="note">После входа вы сможете выбрать образ и характер персонажа.</p></section>`;$('#joinBtn').onclick=()=>joinRoom($('#roomCodeInput').value.trim().toUpperCase(),$('#guestName').value.trim())}
+let lobbyBuilt=false, busy=false;
+function copyText(t,msg){const done=()=>alert(msg);if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t).then(done).catch(()=>fallback())}else fallback();function fallback(){const i=document.createElement('input');i.value=t;document.body.appendChild(i);i.select();try{document.execCommand('copy');done()}catch(e){prompt('Скопируйте вручную:',t)}i.remove()}}
+const archLabel=a=>a==='pragmatist'?'Запасливый':a==='observer'?'Внимательный':'Смелый';
+function playersHtml(){return room.players.map(p=>`<div class="player"><strong>${esc(p.player_name)} ${p.is_host?'★':''}</strong><div class="note">${p.gender==='female'?'Женщина':'Мужчина'} · ${archLabel(p.archetype)}</div><div class="${p.is_ready?'ready':'waiting'}">${p.is_ready?'● ГОТОВ':'◌ ОЖИДАЕТ'}</div></div>`).join('')}
+function lobby(){
+lobbyBuilt=true;
+$('#app').innerHTML=`
+<section class="panel">
+<div class="lobby-head"><div><div class="eyebrow" id="arkLine"></div><h1 class="heading" style="margin-bottom:4px">ЭКИПАЖ СОБИРАЕТСЯ</h1><div class="note" id="capLine"></div></div><div><div class="note" style="text-align:center">КОД ДЛЯ ВХОДА</div><div class="room-code">${esc(room.code)}</div></div></div>
+<div class="invite"><input id="inviteLink" readonly value="${esc(location.origin+location.pathname+'?room='+room.code)}"><button id="copyBtn" class="btn paperbtn">КОПИРОВАТЬ ССЫЛКУ</button><button id="copyCodeBtn" class="btn paperbtn">КОПИРОВАТЬ КОД</button></div>
+<div class="section-title">ПАССАЖИРЫ <span class="count" id="countBox"></span></div>
+<div class="players" id="playersBox"></div>
+<div class="section-title">ВАШ ПЕРСОНАЖ</div>
+<div class="two"><div class="field"><label>Имя персонажа</label><input id="charName" maxlength="24" value="${esc(me.player_name)}"></div><div class="field"><label>Образ</label><select id="gender"><option value="male">Мужчина</option><option value="female">Женщина</option></select></div></div>
+<div class="field"><label>Характер на борту</label><select id="archetype"><option value="pragmatist">Запасливый · меньше голода и жажды</option><option value="observer">Внимательный · меньше подозрений</option><option value="adventurer">Смелый · бонус в развилках</option></select></div>
+<div class="two"><button id="saveChar" class="btn paperbtn">СОХРАНИТЬ ИМЯ</button><button id="readyBtn" class="btn olive"></button></div>
+<div id="hostBox"></div>
+<div class="footerline"><span class="note" id="roleNote"></span><button id="leaveBtn" class="btn paperbtn">ПОКИНУТЬ КОМНАТУ</button></div>
+<div id="error" class="error hidden"></div>
+</section>`;
+$('#gender').value=me.gender;$('#archetype').value=me.archetype;
+$('#copyBtn').onclick=()=>copyText($('#inviteLink').value,'Ссылка скопирована');
+$('#copyCodeBtn').onclick=()=>copyText(room.code,'Код скопирован');
+$('#saveChar').onclick=saveCharacter;$('#readyBtn').onclick=toggleReady;$('#leaveBtn').onclick=leaveRoom;
+$('#gender').onchange=saveCharacter;$('#archetype').onchange=saveCharacter;
+updateLobby();
+}
+function updateLobby(){
+const host=!!me.is_host;
+$('#arkLine').textContent='КОМНАТА ОЖИДАНИЯ · '+room.ark_title;
+$('#capLine').textContent=`Капитан: ${room.host_name} · До планеты: ${room.target_days} дней · Лимит: ${room.max_players} пассажиров`;
+$('#countBox').textContent=`${room.players.length} / ${room.max_players}`;
+$('#playersBox').innerHTML=playersHtml();
+$('#readyBtn').textContent=me.is_ready?'ОТМЕНИТЬ ГОТОВНОСТЬ':'Я ГОТОВ';
+const g=$('#gender'),a=$('#archetype');
+if(document.activeElement!==g)g.value=me.gender;
+if(document.activeElement!==a)a.value=me.archetype;
+const canStart=room.players.length>=6&&room.players.every(p=>p.is_ready);
+$('#hostBox').innerHTML=host?`<button id="startBtn" class="btn primary wide" ${canStart?'':'disabled title="Нужно минимум 6 игроков и готовность каждого"'}>НАЧАТЬ ИГРУ ►</button><p class="note">Старт доступен, когда собралось минимум 6 игроков и все участники нажали «Я готов».</p>`:'';
+if(host)$('#startBtn').onclick=startGame;
+$('#roleNote').textContent=host?'Вы капитан этой комнаты.':'Ожидайте запуска капитаном.';
+}
+function renderStarted(){lobbyBuilt=false;$('#app').innerHTML=`<section class="panel hero"><h1 class="heading">ЭКИПАЖ СОБРАН</h1><p>Капитан запустил рейс. Комната перешла в состояние «Игра началась».</p><p class="note">Игровой движок будет подключён следующим этапом.</p></section>`}
+async function createRoom(){
+if(busy)return;
+if(!db)return showError('Сайт не подключён к Supabase.');
+const host=$('#hostName').value.trim(),title=$('#arkTitle').value.trim(),max=Number($('#maxPlayersSelect').value==='custom'?$('#maxPlayersCustom').value:$('#maxPlayersSelect').value),days=Number($('#targetDaysSelect').value==='custom'?$('#targetDaysCustom').value:$('#targetDaysSelect').value);
+if(!host||!title)return showError('Укажите имя капитана и название Ковчега.');
+if(!Number.isInteger(max)||max<6||max>30)return showError('Количество игроков должно быть от 6 до 30.');
+if(!Number.isInteger(days)||days<4||days>10)return showError('Количество дней должно быть от 4 до 10.');
+busy=true;$('#createBtn').disabled=true;
+try{
+let data=null,error=null;
+for(let i=0;i<5;i++){
+({data,error}=await db.from('kovcheg_rooms').insert({code:code(),host_name:host,ark_title:title,max_players:max,target_days:days,status:'waiting'}).select().single());
+if(!error||error.code!=='23505')break;
+}
+if(error)return showError(error.message);
+room={...data,players:[]};
+const pid=uuid();
+const {data:p,error:pe}=await db.from('kovcheg_players').insert({room_id:room.id,player_id:pid,player_name:host,gender:'male',archetype:'pragmatist',is_host:true,is_ready:false}).select().single();
+if(pe){room=null;return showError(pe.message)}
+me=p;await enterRoom();
+}catch(e){room=null;showError('Ошибка соединения: '+(e.message||e))}
+finally{busy=false;const b=$('#createBtn');if(b)b.disabled=false}
+}
+async function joinRoom(c,n){
+if(busy)return;
+if(!db)return showError('Сайт не подключён к Supabase.');
+if(!/^[A-Z0-9]{5}$/.test(c)||!n)return showError('Введите корректный код комнаты и своё имя.');
+busy=true;$('#joinBtn').disabled=true;
+try{
+const {data:r,error}=await db.from('kovcheg_rooms').select('*').eq('code',c).eq('status','waiting').maybeSingle();
+if(error||!r)return showError('Комната не найдена или игра уже началась.');
+const {count}=await db.from('kovcheg_players').select('*',{count:'exact',head:true}).eq('room_id',r.id);
+if(count>=r.max_players)return showError('В комнате уже нет свободных мест.');
+const pid=uuid();
+const {data:p,error:pe}=await db.from('kovcheg_players').insert({room_id:r.id,player_id:pid,player_name:n,gender:'male',archetype:'pragmatist',is_host:false,is_ready:false}).select().single();
+if(pe)return showError(pe.message);
+room={...r,players:[]};me=p;await enterRoom();
+}catch(e){showError('Ошибка соединения: '+(e.message||e))}
+finally{busy=false;const b=$('#joinBtn');if(b)b.disabled=false}
+}
+async function enterRoom(){
+localStorage.setItem('kovcheg_room',room.code);localStorage.setItem('kovcheg_pid',me.player_id);
+history.replaceState({},'',`?room=${room.code}`);
+if(channel){db.removeChannel(channel);channel=null}
+if(poller)clearInterval(poller);
+lobbyBuilt=false;
+await refreshRoom();
+channel=db.channel('room-'+room.id).on('postgres_changes',{event:'*',schema:'public',table:'kovcheg_players',filter:`room_id=eq.${room.id}`},refreshRoom).on('postgres_changes',{event:'*',schema:'public',table:'kovcheg_rooms',filter:`id=eq.${room.id}`},refreshRoom).subscribe();
+poller=setInterval(refreshRoom,5000);
+}
+async function refreshRoom(){
+if(!db||!room||!me)return;
+const rid=room.id,pid=me.player_id;
+const [{data:r},{data:ps},{data:p}]=await Promise.all([db.from('kovcheg_rooms').select('*').eq('id',rid).maybeSingle(),db.from('kovcheg_players').select('*').eq('room_id',rid).order('created_at'),db.from('kovcheg_players').select('*').eq('room_id',rid).eq('player_id',pid).maybeSingle()]);
+if(!room||room.id!==rid)return;
+if(!r)return;
+if(ps&&!p&&!ps.some(x=>x.player_id===pid)){forgetRoom();return joinScreen()}
+room={...r,players:ps||[]};if(p)me=p;
+if(room.status==='started'){renderStarted();return}
+if(!lobbyBuilt)lobby();else updateLobby();
+}
+function forgetRoom(){if(channel){db.removeChannel(channel);channel=null}if(poller){clearInterval(poller);poller=null}room=null;me=null;lobbyBuilt=false;localStorage.removeItem('kovcheg_room');localStorage.removeItem('kovcheg_pid')}
+async function saveCharacter(){
+const name=$('#charName').value.trim()||me.player_name;
+const {error}=await db.from('kovcheg_players').update({player_name:name,gender:$('#gender').value,archetype:$('#archetype').value}).eq('id',me.id);
+if(error)return showError(error.message);
+if(me.is_host&&name!==room.host_name)await db.from('kovcheg_rooms').update({host_name:name}).eq('id',room.id);
+$('#charName').value=name;
+await refreshRoom();
+}
+async function toggleReady(){const {error}=await db.from('kovcheg_players').update({is_ready:!me.is_ready}).eq('id',me.id);if(error)return showError(error.message);await refreshRoom()}
+async function startGame(){if(!me.is_host)return;await refreshRoom();if(room.players.length<6||!room.players.every(p=>p.is_ready))return showError('Нужно минимум 6 игроков и готовность каждого.');const {error}=await db.from('kovcheg_rooms').update({status:'started'}).eq('id',room.id);if(error)return showError(error.message);await refreshRoom()}
+async function leaveRoom(){
+const myRoom=room,myMe=me;
+forgetRoom();
+try{
+if(myMe?.id){
+await db.from('kovcheg_players').delete().eq('id',myMe.id);
+if(myMe.is_host&&myRoom){
+const next=myRoom.players.find(p=>p.id!==myMe.id);
+if(next){await db.from('kovcheg_players').update({is_host:true}).eq('id',next.id);await db.from('kovcheg_rooms').update({host_name:next.player_name}).eq('id',myRoom.id)}
+}
+}
+}catch(e){}
+history.replaceState({},'',location.pathname);home();
+}
+async function resume(){
+if(!db)return incoming?joinScreen():home();
+const c=incoming||localStorage.getItem('kovcheg_room'),pid=localStorage.getItem('kovcheg_pid');
+if(!c||!pid)return incoming?joinScreen():home();
+const {data:r}=await db.from('kovcheg_rooms').select('*').eq('code',c).maybeSingle();
+if(!r)return incoming?joinScreen():home();
+const {data:p}=await db.from('kovcheg_players').select('*').eq('room_id',r.id).eq('player_id',pid).maybeSingle();
+if(!p)return joinScreen();
+room={...r,players:[]};me=p;await enterRoom();
+}
+resume();
+</script>
+</body></html>
